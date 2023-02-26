@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {%load static %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics of ML</title>
+
+    <link rel="stylesheet" href="static/css/style.css">
+
+</head>
+<body>
+    <div class="container">
+        <div class="nav_bar_container">
+            
+            <!-- Logo -->
+            <div class="logo_box">
+                <div class="logo">
+                    <img src="" alt="Logo">
+                </div>
+            </div>
+            
+            <!-- Navigation Bar -->
+            <div class="nav_bar">
+                <ul>
+                    <li><a href="{% url 'index'%}">Live Network Monitoring</a></li>
+                    <li><a href="{% url 'anomalyPage'%}">Anomaly Detection</a></li>
+                    <li><a href="{% url 'malLinkPage'%}">Malicious Link Detection</a></li>
+                    <li><a href="{% url 'trainPage'%}">Train Models</a></li>
+                    <li><a class="active" href="{% url 'statPage'%}">Statistics of ML</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- To show all captured packet -->
+        <div class="content_box">
+
+            <!-- profile and notification container -->
+            <div class="title_bar">
+
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>

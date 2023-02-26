@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    
+    <title>Register</title>
+    <style>
+        body{
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgb(50, 50, 50);
+            overflow: hidden;
+        }
+        .box{
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            width: 450px;
+            height: 650px;
+            border-radius: 13px;
+            margin-top: 80px;
+        }
+
+        .form, form{
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height:fit-content;
+            margin: 30px;
+            flex-direction: column;
+        }
+
+        input{
+            margin: 10px 0px;
+            height: 40px;
+            width: 71%;
+        }
+
+        button{
+            height: 40px;
+            width: 150px;
+            margin: 35px 10px;
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="box">
+        <h1 style="margin-bottom: 40px; font-size: 50px;">Register</h1>
+        <form id="form" enctype="multipart/form-data">
+            <p style="padding:0;" id="prompt"></p>
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div class="form">
+                <input type="text" name="username" placeholder="Enter Username" id="username">
+                <input type="password" name="password1" placeholder="Enter Password" id="password1">
+                <input type="password" name="password2" placeholder="Confirm Password" id="password2">    
+            </div>
+            
+        </form>
+        <div style="display:flex; flex-direction:row;">
+            <button id="register" style="background-color: rgb(132, 177, 220); border: none; border-radius: 5px; ">Register</button>
+            <a href="{% url 'login'%}" > <button id="login" style="background-color:lightseagreen; border: none; border-radius: 5px;"> Login</button></a>
+        </div>
+    </div>
+
+    <script>
+
+        $(document).ready(function(e){
+            $("#register").click(function(){
+                var user = new FormData();
+                user.append("username", $("#username").val());
+                user.append("password1", $("#password1").val());
+                user.append("password2", $("#password2").val());
+                user.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+                $("#prompt").html(user);
+                $.ajax({
+                    url: '{% url 'registerAccount' %}',
+                    type: 'POST',
+                    data: user,
+                    dataType: 'json',
+                    success: function (response){
+                        if(response.success == "true"){
+                            $("#prompt").css("color", "green");
+                            $("#prompt").html("Please wait for admin approval.");
+                        }
+                        else{
+                            $("#prompt").css("color", "red");
+                            $("#prompt").html("Please provide valid crediential.");
+                        }
+                    },
+                    
+                    processData: false,
+                    contentType: false,
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

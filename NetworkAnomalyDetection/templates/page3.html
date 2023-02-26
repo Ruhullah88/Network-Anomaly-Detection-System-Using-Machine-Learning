@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {%load static %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Models</title>
+
+    <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.js"></script>
+    
+</head>
+<body>
+    <div class="container">
+        <div class="nav_bar_container">
+            
+            <!-- Logo -->
+            <div class="logo_box">
+                <div class="logo">
+                    <img src="" alt="Logo">
+                </div>
+            </div>
+            
+            <!-- Navigation Bar -->
+            <div class="nav_bar">
+                <ul>
+                    <li><a href="{% url 'index'%}">Live Network Monitoring</a></li>
+                    <li><a href="{% url 'anomalyPage'%}">Anomaly Detection</a></li>
+                    <li><a href="{% url 'malLinkPage'%}">Malicious Link Detection</a></li>
+                    <li><a class="active" href="{% url 'trainPage'%}">Train Models</a></li>
+                    <li><a href="{% url 'statPage'%}">Statistics of ML</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- To show all captured packet -->
+        <div class="content_box">
+
+            <!-- profile and notification container -->
+            <div class="title_bar">
+                
+            </div>
+            
+            <!-- Content container -->
+            <div class="pg3_content_box">
+                
+                <!-- Training box -->
+                <div class="training_box">
+
+                    <div class="file_box">
+                        <span style="margin-left: 20px;">Select Datasets File for Training</span>
+
+                        <form id= "myForm" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            {{ form.as_p }}
+
+                            <input type="file" id="myFile" name="filename" 
+                            class="choose_file_btn" style="height: 40px;
+                            position: relative;
+                            width: 50%;
+                            padding-left: 10px;
+                            line-height: 40px;
+                            border-radius: 3px;
+                            background-color: rgb(127, 127, 127);
+                            color: #fff;">
+                            </input>
+                        </form>
+
+                        <span id="error_msg" ></span>
+                        
+                    </div>
+
+                    <div class="algo_box">
+                        <span>Select an Algorithm</span>
+
+                        <button class="file_algo_btn" style="height: 40px;
+                            width: 150px;
+                            margin-top: 10px;
+                            line-height: 40px;
+                            text-align: center;
+                            border-radius: 3px;
+                            background-color: rgb(127, 127, 127);
+                            color: #fff;">
+                            <span style="color: #fff;">Select</span>
+                        </button>
+                    </div>
+
+                    <div class="train_btn_box">
+                        <div class="train_btn">Start Training</div>
+                    </div>
+                </div>
+
+                <!-- Output container -->
+                <div class="output_box" style="overflow:auto;">
+                    <table id="table">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        
+        $(document).ready(function(e){
+
+            $("input[id^='myFile']").change(function(){
+                
+                var file = $("input[id^='myFile']")[0].files[0];
+                var fileExt = $(this).val().split('.').pop();
+                if(file != null ){
+                    if (fileExt === "csv"){
+                        var count = 0;
+                        $("#error_msg").css("color", "black");
+                        $("#error_msg").html("Loading maximum 500 rows.");
+                        Papa.parse(file, {
+                            download: true,
+                            step: function(row, parser){
+                                count+=1;
+                                var min = 500;
+
+                                if (count === min){
+                                    parser.abort();
+                                }
+                                var row = row.data;
+                                var table = "";
+                                
+                                
+                                if(count === 1){
+                                    table += "<thead>";
+                                    table += "<tr>";
+                                }
+                                else{
+                                    table += "<tr id='tdata'>";
+                                }
+
+                                for (var column=0; column<row.length; column++){
+                                    for (var x=0; x< row[column].length; x++){
+                                    
+                                        if(count === 1){
+                                            table += "<th id='head'>";
+                                            table += row[column][x];
+                                            table += "</th>";
+                                        }
+                                        else{
+                                            table += "<td id='data'>";
+                                            table += row[column][x];
+                                            table += "</td>";
+                                        }
+                                    }
+                                    if(count === 1){
+                                        table += "</tr>";
+                                        table += "</thead>";
+                                    }
+                                    else{
+                                        table += "</tr>";
+                                    }
+                                    
+                                    $("#table").append(table);
+                                    $("#error_msg").css("color", "green");
+                                    $("#error_msg").html("Data Loaded");
+                                }
+                            },
+                            Complete: function(result) {
+                                console.log("Complete");
+                            },
+                            error: function(err, file, inputElem, reason){
+                                // executed if an error occurs while loading the file,
+                                // or if before callback aborted for some reason
+                                console.log(reason);
+                            },
+                        });
+                    }
+                    else{
+                        $("#error_msg").css("color", "red");
+                        $("#error_msg").html("Only File(.csv) are allowed");
+                    }
+                }
+                else{
+                    $("#error_msg").html("");
+                }
+    
+            });
+            $(".train_btn").click(function(){
+                $("#error_msg").html("Training is in progress.");
+                var file = $("input[id^='myFile']")[0].files[0];
+                var fileExt = $("input[id^='myFile']").val().split('.').pop();
+                
+                if(file != null){
+                    if(fileExt === "csv"){
+                        var data = new FormData();
+                        data.append("file", file);
+                        data.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+                        
+                        $.ajax({
+                            url: '{% url 'trainModel' %}',
+                            type: 'POST',
+                            data: data,
+                            dataType: 'json',
+                            success: function (response) {
+                                $("#error_msg").css("color", "green");
+                                $("#error_msg").html("Training Successful");
+                            },
+                            processData: false,
+                            contentType: false,
+                        });
+                    }
+                    else{
+                        $("#error_msg").css("color", "red");
+                        $("#error_msg").html("Only csv files can be trainned.");
+                    }
+                }
+                else{
+                    $("#error_msg").css("color", "red");
+                    $("#error_msg").html("Please Select File(.csv)");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
