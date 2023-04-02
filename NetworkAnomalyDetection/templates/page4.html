@@ -8,7 +8,90 @@
     <title>Statistics of ML</title>
 
     <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        .nav_bar_container {
+            position: fixed;
+            top: 40px;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            transition: left 0.3s ease-in-out;
+        }
+        
+        .nav_bar_container.open {
+            left: 0;
+        }
+        
+        .toggle-nav_bar_container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+        .content_box{
+            height: 100vh;
+            width: 100%;
+            background-color: #D9D9D9;
+        }
 
+        /* style for the tabs container */
+        .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        height: 40px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        }
+        /* style for the tab buttons */
+        .tab {
+        background-color: #eee;
+        border: 1px solid #ccc;
+        padding: 10px;
+        position: relative;
+        top: 2px;
+        margin-right: 10px;
+        cursor: pointer;
+        }
+        /* style for the active tab button */
+        .active-tab {
+        background-color: #fff;
+        border-bottom: none;
+        z-index: 100;
+        }
+        /* style for the tab content */
+        .tab-content {
+        display: none;
+        height: 100vh;
+        border: 1px solid #ccc;
+        }
+        /* style for the active tab content */
+        .active-content {
+        display: block;
+        }
+        .nav-bar {
+            display: flex;
+            height:40px;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333;
+          }
+          
+          .nav-bar button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            width: fit-content;
+            font-size: 16px;
+            cursor: pointer;
+            height: 100%;
+            padding: 0 10px;
+          }
+          
+          .nav-bar button:hover {
+            background-color: #555; /* set the background color of the button on hover */
+          }
+          
+    </style>
 </head>
 <body>
     <div class="container">
@@ -38,10 +121,46 @@
 
             <!-- profile and notification container -->
             <div class="title_bar">
-
+                <div class='nav-bar'>
+                    <button id="toggle-sidebar" style="width: fit-content;"> 
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 5px 0;"></div>
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 4px 0;"></div>
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 5px 0;"></div>
+                    </button>
+                </div>
             </div>
             
         </div>
     </div>
+
+
+    <script>
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.querySelector('.nav_bar_container');
+            const toggleButton = document.querySelector('#toggle-sidebar');
+
+            toggleButton.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+
+            // Add click event listener to document
+            document.addEventListener('click', function(event) {
+                // Check if event target is not the sidebar or the toggle button
+                if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

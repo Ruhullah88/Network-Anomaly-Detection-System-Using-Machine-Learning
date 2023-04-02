@@ -5,14 +5,206 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anomaly Detection</title>
+    <title>Live Anomaly Detection</title>
 
     <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js"></script>
 
+    <style>
+        .nav_bar_container {
+            position: fixed;
+            top: 40px;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            transition: left 0.3s ease-in-out;
+        }
+        
+        .nav_bar_container.open {
+            left: 0;
+        }
+        
+        .toggle-nav_bar_container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+        .content_box{
+            height: 100vh;
+            width: 100%;
+            background-color: #D9D9D9;
+        }
+
+        /* style for the tabs container */
+        .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        height: 40px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        }
+        /* style for the tab buttons */
+        .tab {
+        background-color: #eee;
+        border: 1px solid #ccc;
+        padding: 10px;
+        position: relative;
+        top: 2px;
+        margin-right: 10px;
+        cursor: pointer;
+        }
+        /* style for the active tab button */
+        .active-tab {
+        background-color: #fff;
+        border-bottom: none;
+        z-index: 100;
+        }
+        /* style for the tab content */
+        .tab-content {
+        display: none;
+        height: 100vh;
+        overflow-y:scroll;
+        border: 1px solid #ccc;
+        }
+        /* style for the active tab content */
+        .active-content {
+        display: block;
+        }
+        .nav-bar {
+            display: flex;
+            height:40px;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333;
+          }
+          
+          .nav-bar button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            width: fit-content;
+            font-size: 16px;
+            cursor: pointer;
+            height: 100%;
+            padding: 0 10px;
+          }
+          
+          .nav-bar button:hover {
+            background-color: #555; /* set the background color of the button on hover */
+          }
+
+
+        #src_ip_table th, #src_ip_table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        #src_ip_table tr:nth-child(even) {
+        background-color: #ddd;
+        }
+        #dst_ip_table tbody tr:nth-child(odd) {
+        background-color: #f2f2f2;
+        }
+
+        #src_port_table th, #src_port_table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        #src_port_table tr:nth-child(even) {
+        background-color: #ddd;
+        }
+        #src_port_table tbody tr:nth-child(odd) {
+        background-color: #f2f2f2;
+        }
+
+
+        #dst_ip_table th, #dst_ip_table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        #dst_ip_table tr:nth-child(even) {
+        background-color: #ddd;
+        }
+        #dst_ip_table tbody tr:nth-child(odd) {
+        background-color: #f2f2f2;
+        }
+
+        #dst_port_table th, #dst_port_table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        #dst_port_table tr:nth-child(even) {
+        background-color: #ddd;
+        }
+        #dst_port_table tbody tr:nth-child(odd) {
+        background-color: #f2f2f2;
+        }
+
+        .table{
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 1px 1px #888888;
+            padding: 10px;
+            overflow:scroll;
+        }
+        .scrollable-div {
+            height:100%;
+            overflow-y: auto; /* scrollable content */
+        }
+          
+        .date-picker {
+            position: fixed;
+            top: 2%;
+            left: 12%;
+            width: 76%;
+            height: 95%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            border-radius: 5px;
+        }
+        
+        .date-picker label, .date-picker input, .date-picker button {
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .date-picker input[type="date"] {
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #f7f7f7;
+        }
+        
+        .date-picker button {
+            padding: 10px 20px;
+            background-color: #008cba;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        {% comment %} #pdfContainer {
+            height: 700px;
+            width:500px;
+        } {% endcomment %}
+        
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="nav_bar_container">
+            
             
             <!-- Logo -->
             <div class="logo_box">
@@ -35,37 +227,874 @@
         
         <!-- To show all captured packet -->
         <div class="content_box">
-
+            
             <!-- profile and notification container -->
-            <div class="title_bar">
-
+            <div style='display: flex; width:100%; '>
+                    <div class='nav-bar'>
+                        <button id="toggle-sidebar" style="width: fit-content;"> 
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 5px 0;"></div>
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 4px 0;"></div>
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 5px 0;"></div>
+                        </button>
+                    </div>
+                <ul class="tabs">
+                    <li class="tab active-tab" data-tab="tab1">Anomaly Dashboard</li>
+                    <li class="tab" data-tab="tab2">Anomaly Details</li>
+                  </ul>
             </div>
-
+            
+            <div id="tab1" class="tab-content active-content">
+            
             <!-- anomaly section -->
-            <div class="anomaly_detection" style="width: 100%; height: 100%;">
+            <div class="anomaly_detection" style="width: 100%; height: 100%; z-index:-1; ">
                 <!-- title -->
-                <div style="display: flex; align-items: center; position: relative; height: 50px;
-                width: 100%; background-color: #D9D9D9;">
-                    <p>Live Anomalies</p>
-                </div>
+                <div style="z-index:-1; background:#444444;
+                display:flex;
+                padding:5px 10px;
+                color:white;
+                justify-content: space-between;">
+                    <p style="margin-left:10px; ">Anomaly Dashboard</p>
+                    <span>1,000,000</span>
+                    
+                    <!-- Report Generation -->
+                    <button id="generate-btn" type="submit" style="margin-right:10px;">Generate Report</button>
+                    <div class="date-picker">
+                        <div style="width: 70%;">
+                            <div id="pdfContainer" ></div>
+                        </div>
 
-                <!-- Report section -->
-                <div style="display: flex; align-items: center; position: relative; height: 50px;
-                width: 100%; background-color: #D9D9D9;">
-                    <div >
+                        <div style=" width: 25%;">
+                            <label for="start-date">Start Date:</label>
+                            <input type="date" id="start-date" name="start-date">
+                            <label for="end-date">End Date:</label>
+                            <input type="date" id="end-date" name="end-date">
+                            
+                            {% csrf_token %}
+                            <button  id="generate-report">Generate Report</button>
+                            <button id="generate-cancel">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- anomaly details -->
+                <div id="my_table_container" style="height: 717px;
+                padding: 5px;">
+                <table id="my_table" style="margin: 0px; box-shadow: 4px 4px 3px 0px #b4b4b4;">
+                    <thead>
+                        <tr>
+                            <th>Source IP</th>
+                            <th>Source Port</th>
+                            <th>Destination IP</th>
+                            <th>Destination Port </th>
+                            <th>First Seen</th>
+                            <th>Last Seen</th>
+                            <th>Count</th>
+                            <th>Attack Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+            
+            <div id="tab2" style='display: flex; overflow-y:scroll;' class="tab-content">
+                <div style="z-index:-1; background:#444444;
+                padding:5px 10px; color:white;">
+                    <p style="margin-left:10px; ">Anomaly Details</p>
+                </div>
+                <div style='display: flex; justify-content: space-around; width: 99.3%; 
+                height: fit-content; border-radius: 5px; margin: 5px;
+                box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                    
+                    <div style= 'display: flex; justify-content: space-around;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart"></div>
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;'>
+                            <p id="attack1" style='display: inline-block;'>Not Available</p>
+                            <p id="attack1_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart1"></div>
                         
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack2">Not Available</p>
+                            <p id="attack2_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart2"></div>
+                        
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack3">Not Available</p>
+                            <p id="attack3_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart3"></div>
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack4">Not Available</p>
+                            <p id="attack4_count">0</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- anomaly details -->
-                <div style="display: flex; align-items: center; position: relative; height: 50px;
-                width: 100%; background-color: #D9D9D9;">
+                <div style="display:flex;">
                 
-                </div>
+                    <div style="display: flex; flex-wrap: wrap; width:55%; height: 50%;">
+                        <!--Source IP Details-->
+                        <div style='width: 47%;
+                        height: 275px; margin-button: 10px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                        
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Source IP Details</div>
+                            <div class="scrollable-div">
+                                <table id="src_ip_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead >
+                                        <tr style="background-color: grey; ">
+                                            <th>Source IP</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
+                        <!--Source Port Details-->
+                        <div style='width: 47%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'
+                        >
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Source Port Details</div>
+                            <div class="scrollable-div">
+                                <table id="src_port_table" style="margin: 0px; border-radius: 0px 0px;" >
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Source Port</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody >
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!--Destination IP Details-->
+                        <div style='width: 47%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Destination IP Details</div>
+                            <div class="scrollable-div">
+                                <table id="dst_ip_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Destination IP</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!--Destination Port Details-->
+                        <div style='width: 47%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Destination Port Details</div>
+                            <div class="scrollable-div">
+                                <table id="dst_port_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Destination Port</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!--Pie chart Details-->
+                    <div style='display: flex; flex-direction: column;justify-content: space-around;
+                    width: 45%;
+                    height: 558px;
+                    red; border-radius: 5px; margin: 5px;
+                    box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                    <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Pie Chart Details</div>
+                        
+                        <div style="height: 100%;">
+
+                            <div id="pie"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
+	<script>
+        var initialOptions = {
+            series: [0],
+            chart: {
+            height: 150,
+            width: 150,
+            type: 'radialBar',
+            toolbar: {
+                show: false
+            }
+            },
+            plotOptions: {
+            radialBar: {
+                startAngle: 0,
+                endAngle: 360,
+                hollow: {
+                margin: 0,
+                size: '70%',
+                background: '#fff',
+                image: undefined,
+                imageOffsetX: 0,
+                imageOffsetY: 0,
+                position: 'front',
+                dropShadow: {
+                    enabled: true,
+                    top: 3,
+                    left: 0,
+                    blur: 4,
+                    opacity: 0.24
+                }
+                },
+                track: {
+                background: '#fff',
+                strokeWidth: '67%',
+                margin: 0,
+                dropShadow: {
+                    enabled: true,
+                    top: -3,
+                    left: 0,
+                    blur: 4,
+                    opacity: 0.35
+                }
+                },
+            
+                dataLabels: {
+                show: true,
+                name: {
+                    offsetY: -10,
+                    show: false,
+                    color: '#888',
+                    fontSize: '10px'
+                },
+                value: {
+                    formatter: function(val) {
+                    return parseInt(val);
+                    },
+                    color: '#111',
+                    fontSize: '20px',
+                    show: true,
+                    offsetY: 5,
+                }
+                }
+            }
+            },
+            fill: {
+            type: 'gradient',
+            gradient: {
+                shade: 'dark',
+                type: 'horizontal',
+                shadeIntensity: 0.5,
+                gradientToColors: ['#ABE5A1'],
+                inverseColors: true,
+                opacityFrom: 1,
+                opacityTo: 1,
+                stops: [0, 100]
+            }
+            },
+            stroke: {
+            lineCap: 'round'
+            },
+            labels: ['Percent'],
+        };
+
+        var options = {
+            series: [0],
+            chart: {
+            width: 600,
+            type: 'donut',
+          },
+          labels: [],
+          plotOptions: {
+            pie: {
+              startAngle: -90,
+              endAngle: 270,
+            }
+          },
+          
+          dataLabels: {
+            enabled: true,
+            dropShadow: {
+                enabled: true,
+                top: 0,
+                left: 0,
+                blur: 3,
+                opacity: 0.5
+              }
+          },
+          fill: {
+            type: 'gradient',
+          },
+          legend: {
+            formatter: function(val, opts) {
+              return val + " - " + opts.w.globals.series[opts.seriesIndex]
+            }
+          },
+          title: {
+            text: 'All Anomalies with Count'
+          },
+          responsive: [{
+            breakpoint: 0,
+            options: {
+              chart: {
+                width: 200
+              },
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }]
+          };
+
+
+        var chart = new ApexCharts(document.querySelector("#chart"), initialOptions);
+        chart.render();
+        var chart1 = new ApexCharts(document.querySelector("#chart1"), initialOptions);
+        chart1.render();
+        var chart2 = new ApexCharts(document.querySelector("#chart2"), initialOptions);
+        chart2.render();
+        var chart3 = new ApexCharts(document.querySelector("#chart3"), initialOptions);
+        chart3.render();
+
+        var pie = new ApexCharts(document.querySelector("#pie"), options);
+        pie.render();
+        
+
+        function renderRadialData(){
+
+            $.ajax({
+                url: '{% url 'get_anomaly_details' %}',
+                type: 'GET',
+                dataType: 'json',
+                success: function(json_data) {
+                    json_data = JSON.parse(json_data);
+                    var options = {
+                        series: [0],
+                        chart: {
+                        width: 600,
+                        type: 'donut',
+                      },
+                      labels: [],
+                      plotOptions: {
+                        pie: {
+                          startAngle: -90,
+                          endAngle: 270,
+                        }
+                      },
+                      
+                      dataLabels: {
+                        enabled: true,
+                        offset: '50%'
+                      },
+
+                      fill: {
+                        type: 'gradient',
+                      },
+                      legend: {
+                        formatter: function(val, opts) {
+                          return val + " - " + opts.w.globals.series[opts.seriesIndex]
+                        }
+                      },
+                      title: {
+                        text: 'Anomalies with their Counts'
+                      },
+                      responsive: [{
+                        breakpoint: 0,
+                        options: {
+                          chart: {
+                            width: 200
+                          },
+                          legend: {
+                            position: 'bottom'
+                          }
+                        }
+                      }]
+                      };
+            
+                    json_table =json_data.table_data;
+                    json_pie_chart = json_data.pie_chart_values
+                    src_ip_details = json_table[0]
+                    src_port_details = json_table[1]
+                    dst_ip_details = json_table[2]
+                    dst_port_details = json_table[3]
+
+                    // Clear the existing table rows
+                    $('#src_ip_table tbody').empty();
+                    
+                     // Get the table body element
+                    const tableBody1 = document.querySelector('#src_ip_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of src_ip_details) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                        }
+                        
+                        // Add the table row to the table body
+                        tableBody1.appendChild(row);
+                    }
+                    
+                    // Clear the existing table rows
+                    $('#src_port_table tbody').empty();
+                    
+                     // Get the table body element
+                    const tableBody2 = document.querySelector('#src_port_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of src_port_details) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                        }
+                        
+                        // Add the table row to the table body
+                        tableBody2.appendChild(row);
+                    }
+
+                    // Clear the existing table rows
+                    $('#dst_ip_table tbody').empty();
+                    
+                     // Get the table body element
+                    const tableBody3 = document.querySelector('#dst_ip_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of dst_ip_details) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                        }
+                        
+                        // Add the table row to the table body
+                        tableBody3.appendChild(row);
+                    }
+
+                    // Clear the existing table rows
+                    $('#dst_port_table tbody').empty();
+                    
+                     // Get the table body element
+                    const tableBody4 = document.querySelector('#dst_port_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of dst_port_details) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                        }
+                        
+                        // Add the table row to the table body
+                        tableBody4.appendChild(row);
+                    }
+
+                    
+
+                    json_data = json_data.anomaly_count;
+                    total=0;
+
+                    attack1 = document.getElementById("attack1");
+                    attack1_count = document.getElementById("attack1_count");
+                    
+                    attack2 = document.getElementById("attack2");
+                    attack2_count = document.getElementById("attack2_count");
+                    
+                    attack3 = document.getElementById("attack3");
+                    attack3_count = document.getElementById("attack3_count");
+                    
+                    attack4 = document.getElementById("attack4");
+                    attack4_count = document.getElementById("attack4_count");
+                    
+                    if(json_data.length == 0){
+                        chart.updateSeries([0]);
+                        chart1.updateSeries([0]);
+                        chart2.updateSeries([0]);
+                        chart3.updateSeries([0]);
+                        
+                        attack1.innerHTML = "Not Available";
+                        attack1_count.innerHTML = "0";
+                        attack2.innerHTML = "Not Available";
+                        attack2_count.innerHTML = "0";
+                        attack3.innerHTML = "Not Available";
+                        attack3_count.innerHTML = "0";
+                        attack4.innerHTML = "Not Available";
+                        attack4_count.innerHTML = "0";
+
+                    }
+
+                    for (var i = 0; i < json_data.length; i++) {
+                        total= total+json_data[i].total_count;
+                    }
+                    
+                    
+                    
+                    serieses = []
+                    for (var i = 0; i < json_data.length; i++) {
+                        percent = (json_data[i].total_count/total)*100;
+                        serieses.push(percent);
+                    }
+                    names = []
+                    pieSeries =  []
+                    for (var j = 0; j < json_pie_chart.length; j++) {
+
+                        pieVal = json_pie_chart[j].total_count;
+                        pieSeries.push(pieVal);
+                        name = json_pie_chart[j].anomaly_type
+                        names.push(name);
+                    }
+
+                    options.labels = names;
+                    pie.updateSeries(pieSeries);
+                    pie.updateOptions({
+                        labels: names,
+                      });
+
+                    all_options = []
+                    for (var i = 0; i < json_data.length; i++) {
+    
+                        var options = {
+                            series: [serieses[i]],
+                            chart: {
+                            height: 150,
+                            width: 150,
+                            type: 'radialBar',
+                            toolbar: {
+                                show: false
+                            }
+                            },
+                            plotOptions: {
+                            radialBar: {
+                                startAngle: 0,
+                                endAngle: 360,
+                                hollow: {
+                                margin: 0,
+                                size: '70%',
+                                background: '#fff',
+                                image: undefined,
+                                imageOffsetX: 0,
+                                imageOffsetY: 0,
+                                position: 'front',
+                                dropShadow: {
+                                    enabled: true,
+                                    top: 3,
+                                    left: 0,
+                                    blur: 4,
+                                    opacity: 0.24
+                                }
+                                },
+                                track: {
+                                background: '#fff',
+                                strokeWidth: '67%',
+                                margin: 0,
+                                dropShadow: {
+                                    enabled: true,
+                                    top: -3,
+                                    left: 0,
+                                    blur: 4,
+                                    opacity: 0.35
+                                }
+                                },
+                            
+                                dataLabels: {
+                                show: true,
+                                name: {
+                                    offsetY: -10,
+                                    show: false,
+                                    color: '#888',
+                                    fontSize: '10px'
+                                },
+                                value: {
+                                    formatter: function(val) {
+                                    return parseInt(val);
+                                    },
+                                    color: '#111',
+                                    fontSize: '20px',
+                                    show: true,
+                                    offsetY: 5,
+                                }
+                                }
+                            }
+                            },
+                            fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'dark',
+                                type: 'horizontal',
+                                shadeIntensity: 0.5,
+                                gradientToColors: ['#ABE5A1'],
+                                inverseColors: true,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
+                            }
+                            },
+                            stroke: {
+                            lineCap: 'round'
+                            },
+                            labels: ['Percent'],
+                            };
+                            all_options.push(options);
+                    
+                        }
+                    for (var i = 0; i < json_data.length; i++) {
+                        
+                        
+                        if(i == 0){
+                            
+                            chart.updateSeries([serieses[i]])
+                            attack1.innerHTML = json_data[i].anomaly_type;
+                            attack1_count.innerHTML = json_data[i].total_count;
+    
+                        }
+                        else if(i == 1){
+                            
+                            chart1.updateSeries([serieses[i]])
+                            attack2.innerHTML = json_data[i].anomaly_type;
+                            attack2_count.innerHTML = json_data[i].total_count;
+    
+                        }
+                        else if(i == 2){
+                            
+                            chart2.updateSeries([serieses[i]])
+                            attack3.innerHTML = json_data[i].anomaly_type;
+                            attack3_count.innerHTML = json_data[i].total_count;
+                        
+                        }
+                        else{
+                            
+                            chart3.updateSeries([serieses[i]])
+                            attack4.innerHTML = json_data[i].anomaly_type;
+                            attack4_count.innerHTML = json_data[i].total_count;
+                        }
+                    }
+                }
+            });
+        }
+    
+        setInterval(renderRadialData, 3000);
+
+	</script>
 
         </div>
     </div>
+
+    <script>
+
+        // add click event listener to tabs
+        var tabs = document.querySelectorAll('.tab');
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // remove active class from all tabs
+
+                tabs.forEach(function(t) {
+                    t.classList.remove('active-tab');
+                });
+                // add active class to clicked tab
+                this.classList.add('active-tab');
+                // hide all tab contents
+                var tabContents = document.querySelectorAll('.tab-content');
+                tabContents.forEach(function(content) {
+                    content.style.display = 'none';
+                });
+                // show the corresponding tab content
+                var tabId = this.getAttribute('data-tab');
+                var tabContent = document.querySelector('#' + tabId);
+                tabContent.style.display = 'block';
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.querySelector('.nav_bar_container');
+            const toggleButton = document.querySelector('#toggle-sidebar');
+
+            toggleButton.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+
+            // Add click event listener to document
+            document.addEventListener('click', function(event) {
+                // Check if event target is not the sidebar or the toggle button
+                if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+                }
+            });
+        });
+
+        function updateTable() {
+            $.ajax({
+                url: '{% url 'anomaly_data' %}',
+                type: 'get',
+                success: function(response) {
+                    // Clear the existing table rows
+                    $('#my_table tbody').empty();
+                
+                    
+                     // Get the table body element
+                    const tableBody = document.querySelector('#my_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of response.anomaly) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+                        if(data["count"] <= 1 ){
+                            break;
+                        }
+                        else{
+
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                            }
+                        
+                            // Add the table row to the table body
+                            tableBody.appendChild(row);
+                        }
+                    }
+                }
+                
+            });
+        }
+        setInterval(updateTable, 1000);
+
+
+
+        // report generate
+        
+        const generateReportBtn = document.getElementById('generate-btn');
+        const generateReport = document.getElementById('generate-report');
+        const generateCancelBtn = document.getElementById('generate-cancel');
+        const datePicker = document.querySelector('.date-picker');
+
+        generateReportBtn.addEventListener('click', () => {
+            datePicker.style.display = 'flex';
+        });
+        
+
+        generateReport.addEventListener('click',()=>{
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            event.preventDefault();
+            var csrftoken = $('input[name="csrfmiddlewaretoken"]').val();
+            console.log(csrftoken);
+            var result = startDate.toString() + " to " + endDate.toString();
+
+            $.ajax({
+                url: '{% url 'generate_report' %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+                data: {
+                  'my_data': result
+                },
+                success: function(response) {
+                    // Convert the response to a Blob object
+                    var blob = new Blob([response], {type: 'application/pdf'});
+
+                    // Convert the Blob object to a data URL
+                    var dataUrl = URL.createObjectURL(blob);
+
+                    // Display the PDF in the div using PDFObject
+                    PDFObject.embed(dataUrl, '#pdfContainer', { height: '800px', width: '600px' ,pdfOpenParams: { navpanes: 0, toolbar: 0 }});
+
+                },
+                error: function() {
+                    alert('AJAX request failed!');
+                }
+              });
+        });
+
+        generateCancelBtn.addEventListener('click',()=>{
+            datePicker.style.display = 'none';
+        }); 
+          
+    </script>
 </body>
 </html>

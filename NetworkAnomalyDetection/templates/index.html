@@ -9,6 +9,119 @@
     <title>Live Network Monitoring</title>
     <link rel="stylesheet" href="static/css/style.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <style>
+        .nav_bar_container {
+            position: fixed;
+            top: 40px;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            transition: left 0.3s ease-in-out;
+        }
+        
+        .nav_bar_container.open {
+            left: 0;
+        }
+        
+        .toggle-nav_bar_container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+        .content_box{
+            height: 100vh;
+            width: 100%;
+            background-color: #D9D9D9;
+        }
+
+        /* style for the tabs container */
+        .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        height: 40px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        }
+        /* style for the tab buttons */
+        .tab {
+        background-color: #eee;
+        border: 1px solid #ccc;
+        padding: 10px;
+        position: relative;
+        top: 2px;
+        margin-right: 10px;
+        cursor: pointer;
+        }
+        /* style for the active tab button */
+        .active-tab {
+        background-color: #fff;
+        border-bottom: none;
+        z-index: 100;
+        }
+        /* style for the tab content */
+        .tab-content {
+        display: none;
+        height: 100vh;
+        border: 1px solid #ccc;
+        }
+        /* style for the active tab content */
+        .active-content {
+        display: block;
+        }
+        .nav-bar {
+            display: flex;
+            height:40px;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333;
+          }
+          
+          .nav-bar button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            width: fit-content;
+            font-size: 16px;
+            cursor: pointer;
+            height: 100%;
+            padding: 0 10px;
+          }
+          
+          .nav-bar button:hover {
+            background-color: #555; /* set the background color of the button on hover */
+          }
+
+          
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+          }
+          
+          th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+          }
+          
+          th {
+            background-color: #f2f2f2;
+            color: #333;
+          }
+
+          thead tr:nth-child(even) {
+            background-color: #f2f2f2;
+          }
+          #my_table tr:nth-child(odd) {
+            background-color: #ddd;
+          }
+          tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+          }
+          
+    </style>
 </head>
 <body>
     <div class="container">
@@ -38,55 +151,142 @@
             
             <!-- profile and notification container -->
             <div class="title_bar">
-
+                <div class='nav-bar'>
+                    <button id="toggle-sidebar" style="width: fit-content;"> 
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 5px 0;"></div>
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 4px 0;"></div>
+                        <div style="width: 30px;
+                        height: 3px;
+                        background-color: #888888;
+                        margin: 5px 0;"></div>
+                    </button>
+                </div>
             </div>
             
             <!--Button to capture traffic -->
-            <div class="capture_btn" >
-                <span>Stop Capturing</span>
+            <div  class="capture_btn">
+                <span id="ajax-btn" onclick="toggleAjax()">Start Capturing</span>
             </div>
             
             <!--All captured packets shown here-->
-            <div class="pkt_capturing" id="scrollView">
-                <ul >
-                    <li id="pkt_list"></li>
-                </ul>
+            <!--<div class="pkt_capturing" id="scrollView">-->
                 
-                
-                <!--{% for packet in sniffed %}
-                    <br><p>Source IP: {{packet.src_ip}} Destination IP: {{packet.dst_ip}} Source Port: {{packet.sport}} Destination Port: {{packet.dport}}</p><br><hr>
-                {% endfor %}-->
 
+            <div id="my_table_container" style="height: 717px;
+                padding: 5px;">
+                <table id="my_table" style="margin: 10px 0 ; box-shadow: 4px 4px 3px 0px #b4b4b4;">
+                    <thead>
+                        
+                        <tr>
+                            <th>Time</th>
+                            <th>Source Ip</th>
+                            <th>Source Port</th>
+                            <th>Destination Ip</th>
+                            <th>Destination Port</th>
+                            <th>Protocol</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my_table_bd" >
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
-        
-        $(document).ready(function(){
-            
-            setInterval(function(){
-                $.ajax({                    
-                    type: "GET",
-                    url: '{% url 'getPkt' %}',
-                    success: function(response) {
-                        if(response.sniffed.src_ip != "" && response.sniffed.sport !=""){
-                            var temp_list = "<li><br><p>    Source Ip: "+response.sniffed.src_ip+ 
-                            "     Destination Ip: "+response.sniffed.dst_ip+
-                            "     Source Port: "+response.sniffed.sport+
-                            "    Destination Port: "+response.sniffed.sport+"</p><br></li><hr>";
-                            $("#pkt_list").append(temp_list);
-                        }
-                    },
-                    error: function(response){
+
+
+        var ajaxTimer; // variable to hold the timer ID
+        var ajaxRunning = false;
+
+        // function to start the AJAX function
+        function startAjax() {
+            ajaxTimer = setInterval(updateTable, 90); // call getData() every second
+        }
+
+        // function to stop the AJAX function
+        function stopAjax() {
+            clearInterval(ajaxTimer); // stop the timer
+        }
+
+        function toggleAjax() {
+            var btn = document.getElementById("ajax-btn");
+            if (!ajaxRunning) {
+              // Start AJAX function
+              ajaxRunning = true;
+              btn.innerHTML = "Stop Capturing";
+              btn.style.css = "red";
+              startAjax();
+            } else {
+              // Stop AJAX function
+              ajaxRunning = false;
+              btn.innerHTML = "Start Capturing";
+              btn.style.css = "green";
+              stopAjax();
+            }
+          }
+                    
+
+        function updateTable() {
+            var table = document.getElementById("my_table_bd");
+            $.ajax({
+                url: '{% url 'getPkt' %}',
+                type: 'get',
+                success: function(response) { 
+                    // Clear the existing table rows
+                    //$('#my_table tbody').empty();
+                    
+                    if(response.sniffed.src_ip != "" && response.sniffed.sport !=""){
                         
+                        var newRow = table.insertRow();
+
+                        var cell1 = newRow.insertCell(0);
+                        cell1.innerHTML = response.sniffed.time;
+
+                        console.log();
+                        var cell2 = newRow.insertCell(1);
+                        cell2.innerHTML = response.sniffed.src_ip;
+
+                        var cell3 = newRow.insertCell(2);
+                        cell3.innerHTML = response.sniffed.sport;
+                        
+                        var cell3 = newRow.insertCell(3);
+                        cell3.innerHTML = response.sniffed.dst_ip;
+                        
+                        var cell3 = newRow.insertCell(4);
+                        cell3.innerHTML = response.sniffed.dport;
+
+                        var cell3 = newRow.insertCell(5);
+                        cell3.innerHTML = response.sniffed.protocol;
                     }
-                 });
-                 
-            }, 50)
-          });
-        
-          
+                }
+            });
+        }
+
+        // slide nav-bar function
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.querySelector('.nav_bar_container');
+            const toggleButton = document.querySelector('#toggle-sidebar');
+
+            toggleButton.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+
+            // Add click event listener to document
+            document.addEventListener('click', function(event) {
+                // Check if event target is not the sidebar or the toggle button
+                if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+                }
+            });
+        });
+
     </script>
 </body>
 

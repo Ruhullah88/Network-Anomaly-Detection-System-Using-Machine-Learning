@@ -5,14 +5,103 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Malicious Link Detection</title>
+    <title>Pcap Anomaly Detection</title>
 
     <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.js"></script>
+    
+    <style>
+        .nav_bar_container {
+            position: fixed;
+            top: 40px;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            transition: left 0.3s ease-in-out;
+        }
+        
+        .nav_bar_container.open {
+            left: 0;
+        }
+        
+        .toggle-nav_bar_container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+        .content_box{
+            height: 100vh;
+            width: 100%;
+            background-color: #D9D9D9;
+        }
 
+        /* style for the tabs container */
+        .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        height: 40px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        }
+        /* style for the tab buttons */
+        .tab {
+        background-color: #eee;
+        border: 1px solid #ccc;
+        padding: 10px;
+        position: relative;
+        top: 2px;
+        margin-right: 10px;
+        cursor: pointer;
+        }
+        /* style for the active tab button */
+        .active-tab {
+        background-color: #fff;
+        border-bottom: none;
+        z-index: 100;
+        }
+        /* style for the tab content */
+        .tab-content {
+        display: none;
+        height: 100vh;
+        border: 1px solid #ccc;
+        }
+        /* style for the active tab content */
+        .active-content {
+        display: block;
+        }
+        .nav-bar {
+            display: flex;
+            height:40px;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333;
+          }
+          
+          .nav-bar button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            width: fit-content;
+            font-size: 16px;
+            cursor: pointer;
+            height: 100%;
+            padding: 0 10px;
+          }
+          
+          .nav-bar button:hover {
+            background-color: #555; /* set the background color of the button on hover */
+          }
+          
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="nav_bar_container">
+            
             
             <!-- Logo -->
             <div class="logo_box">
@@ -26,7 +115,7 @@
                 <ul>
                     <li><a href="{% url 'index'%}">Live Network Monitoring</a></li>
                     <li><a href="{% url 'anomalyPage'%}">Anomaly Detection</a></li>
-                    <li><a class="active" href="{% url 'malLinkPage'%}">Malicious Link Detection</a></li>
+                    <li><a class="active" href="{% url 'malLinkPage'%}">Pcap Anomaly Detection</a></li>
                     <li><a href="{% url 'trainPage'%}">Train Models</a></li>
                     <li><a href="{% url 'statPage'%}">Statistics of ML</a></li>
                 </ul>
@@ -35,13 +124,630 @@
         
         <!-- To show all captured packet -->
         <div class="content_box">
-
+            
             <!-- profile and notification container -->
-            <div class="title_bar">
-
+            <div style='display: flex; width:100%; '>
+                    <div class='nav-bar'>
+                        <button id="toggle-sidebar" style="width: fit-content;"> 
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 5px 0;"></div>
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 4px 0;"></div>
+                            <div style="width: 30px;
+                            height: 3px;
+                            background-color: #888888;
+                            margin: 5px 0;"></div>
+                        </button>
+                    </div>
+                <ul class="tabs">
+                    <li class="tab active-tab" data-tab="tab1">Anomaly Dashboard</li>
+                    <li class="tab" data-tab="tab2">Anomaly Details</li>
+                  </ul>
             </div>
-        
+            
+            <div id="tab1" class="tab-content active-content">
+            
+            <!-- anomaly section -->
+            <div class="anomaly_detection" style="width: 100%; height: 100%; z-index:-1; ">
+                <!-- title -->
+                <div style="z-index:-1; background:#444444;
+                display:flex;
+                padding:5px 10px;
+                color:white;
+                justify-content: space-between;">
+                    <p style="margin-left:10px; ">Anomaly Dashboard</p>
+                    <span>1,000,000</span>
+                    <form action="{% url 'generate_report' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" style="margin-right:10px;">Generate Report</button>
+                    </form>
+
+                    <form >
+                        {% csrf_token %}
+                        <label for="file">Select a Pcap File:</label>
+                        <input type="file" name="my_file" id="file" required><br>
+                        <input class="send_pcap_btn" type="submit" value="Upload">
+                    </form>
+                </div>
+                
+                <!-- anomaly details -->
+                <div id="my_table_container" style="height: 717px;
+                padding: 5px;">
+                <table id="my_table" style="margin: 0px; box-shadow: 4px 4px 3px 0px #b4b4b4;">
+                    <thead>
+                        <tr>
+                            <th>Source IP</th>
+                            <th>Source Port</th>
+                            <th>Destination IP</th>
+                            <th>Destination Port </th>
+                            <th>First Seen</th>
+                            <th>Last Seen</th>
+                            <th>Count</th>
+                            <th>Attack Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            </div>
+            
+            <div id="tab2" style='display: flex;' class="tab-content">
+                <div style="z-index:-1; background:#444444;
+                padding:5px 10px; color:white;">
+                    <p style="margin-left:10px; ">Anomaly Details</p>
+                </div>
+                <div style='display: flex; justify-content: space-around; width: 99.3%; 
+                height: 15%; border-radius: 5px; margin: 5px;
+                box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                    
+                    <div style= 'display: flex; justify-content: space-around;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart"></div>
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;'>
+                            <p id="attack1" style='display: inline-block;'>Not Available</p>
+                            <p id="attack1_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart1"></div>
+                        
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack2">Not Available</p>
+                            <p id="attack2_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart2"></div>
+                        
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack3">Not Available</p>
+                            <p id="attack3_count">0</p>
+                        </div>
+                    </div>
+
+                    <div style= 'display: flex;'>
+                        <div style="width: fit-content; height: fit-content;" id="chart3"></div>
+                        <div style='
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-content: center;
+                    '>
+                            <p id="attack4">Not Available</p>
+                            <p id="attack4_count">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;">
+                
+                    <div style="display: flex; flex-wrap: wrap; width:65%; height: 50%;">
+                        <!--Source IP Details-->
+                        <div style='width: 48%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Source IP Details</div>
+                            <div>
+                                <table id="src_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Source IP</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!--Source Port Details-->
+                        <div style='width: 48%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Source Port Details</div>
+                            <div>
+                                <table id="src_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Source Port</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!--Destination IP Details-->
+                        <div style='width: 48%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Destination IP Details</div>
+                            <div>
+                                <table id="src_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Destination IP</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!--Destination Port Details-->
+                        <div style='width: 48%;
+                        height: 275px;
+                        red; border-radius: 5px; margin: 5px;
+                        box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                            
+                        <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Destination Port Details</div>
+                            <div>
+                                <table id="src_table" style="margin: 0px; border-radius: 0px 0px;">
+                                    <thead style="background-color: grey; ">
+                                        <tr>
+                                            <th>Destination Port</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!--Pie chart Details-->
+                    <div style='display: flex; justify-content: space-around;
+                    width: 35%;
+                    height: 558px;
+                    red; border-radius: 5px; margin: 5px;
+                    box-shadow: 4px 4px 3px 0px #b4b4b4; background-color: #f2f2f2;'>
+                    <div style="display: block; width: 100%; height: 33px; padding-left: 20px; 
+                        line-height: 33px; color: white;
+                        background-color: #444444;">Pie Chart Details</div>
+                    </div>
+                </div>
+            </div>
+	<script>
+        var initialOptions = {
+            series: [0],
+            chart: {
+            height: 150,
+            width: 150,
+            type: 'radialBar',
+            toolbar: {
+                show: false
+            }
+            },
+            plotOptions: {
+            radialBar: {
+                startAngle: 0,
+                endAngle: 360,
+                hollow: {
+                margin: 0,
+                size: '70%',
+                background: '#fff',
+                image: undefined,
+                imageOffsetX: 0,
+                imageOffsetY: 0,
+                position: 'front',
+                dropShadow: {
+                    enabled: true,
+                    top: 3,
+                    left: 0,
+                    blur: 4,
+                    opacity: 0.24
+                }
+                },
+                track: {
+                background: '#fff',
+                strokeWidth: '67%',
+                margin: 0,
+                dropShadow: {
+                    enabled: true,
+                    top: -3,
+                    left: 0,
+                    blur: 4,
+                    opacity: 0.35
+                }
+                },
+            
+                dataLabels: {
+                show: true,
+                name: {
+                    offsetY: -10,
+                    show: false,
+                    color: '#888',
+                    fontSize: '10px'
+                },
+                value: {
+                    formatter: function(val) {
+                    return parseInt(val);
+                    },
+                    color: '#111',
+                    fontSize: '20px',
+                    show: true,
+                    offsetY: 5,
+                }
+                }
+            }
+            },
+            fill: {
+            type: 'gradient',
+            gradient: {
+                shade: 'dark',
+                type: 'horizontal',
+                shadeIntensity: 0.5,
+                gradientToColors: ['#ABE5A1'],
+                inverseColors: true,
+                opacityFrom: 1,
+                opacityTo: 1,
+                stops: [0, 100]
+            }
+            },
+            stroke: {
+            lineCap: 'round'
+            },
+            labels: ['Percent'],
+        };
+        var chart = new ApexCharts(document.querySelector("#chart"), initialOptions);
+        chart.render();
+        var chart1 = new ApexCharts(document.querySelector("#chart1"), initialOptions);
+        chart1.render();
+        var chart2 = new ApexCharts(document.querySelector("#chart2"), initialOptions);
+        chart2.render();
+        var chart3 = new ApexCharts(document.querySelector("#chart3"), initialOptions);
+        chart3.render();
+
+        function renderRadialData(){
+
+            $.ajax({
+                url: '{% url 'get_pcap_anomaly_details' %}',
+                type: 'GET',
+                dataType: 'json',
+                success: function(json_data) {
+                    json_data = json_data.anomaly_count;
+                    total=0;
+
+                    attack1 = document.getElementById("attack1");
+                    attack1_count = document.getElementById("attack1_count");
+                    
+                    attack2 = document.getElementById("attack2");
+                    attack2_count = document.getElementById("attack2_count");
+                    
+                    attack3 = document.getElementById("attack3");
+                    attack3_count = document.getElementById("attack3_count");
+                    
+                    attack4 = document.getElementById("attack4");
+                    attack4_count = document.getElementById("attack4_count");
+                    
+                    if(json_data.length == 0){
+                        chart.updateSeries([0]);
+                        chart1.updateSeries([0]);
+                        chart2.updateSeries([0]);
+                        chart3.updateSeries([0]);
+                        
+                        attack1.innerHTML = "Not Available";
+                        attack1_count.innerHTML = "0";
+                        attack2.innerHTML = "Not Available";
+                        attack2_count.innerHTML = "0";
+                        attack3.innerHTML = "Not Available";
+                        attack3_count.innerHTML = "0";
+                        attack4.innerHTML = "Not Available";
+                        attack4_count.innerHTML = "0";
+
+                    }
+
+                    for (var i = 0; i < json_data.length; i++) {
+                        total= total+json_data[i].total_count;
+                    }
+                    
+                    serieses = []
+                    for (var i = 0; i < json_data.length; i++) {
+                        percent = (json_data[i].total_count/total)*100;
+                        serieses.push(percent)
+                    }
+                    all_options = []
+                    for (var i = 0; i < json_data.length; i++) {
+    
+                        var options = {
+                            series: [serieses[i]],
+                            chart: {
+                            height: 150,
+                            width: 150,
+                            type: 'radialBar',
+                            toolbar: {
+                                show: false
+                            }
+                            },
+                            plotOptions: {
+                            radialBar: {
+                                startAngle: 0,
+                                endAngle: 360,
+                                hollow: {
+                                margin: 0,
+                                size: '70%',
+                                background: '#fff',
+                                image: undefined,
+                                imageOffsetX: 0,
+                                imageOffsetY: 0,
+                                position: 'front',
+                                dropShadow: {
+                                    enabled: true,
+                                    top: 3,
+                                    left: 0,
+                                    blur: 4,
+                                    opacity: 0.24
+                                }
+                                },
+                                track: {
+                                background: '#fff',
+                                strokeWidth: '67%',
+                                margin: 0,
+                                dropShadow: {
+                                    enabled: true,
+                                    top: -3,
+                                    left: 0,
+                                    blur: 4,
+                                    opacity: 0.35
+                                }
+                                },
+                            
+                                dataLabels: {
+                                show: true,
+                                name: {
+                                    offsetY: -10,
+                                    show: false,
+                                    color: '#888',
+                                    fontSize: '10px'
+                                },
+                                value: {
+                                    formatter: function(val) {
+                                    return parseInt(val);
+                                    },
+                                    color: '#111',
+                                    fontSize: '20px',
+                                    show: true,
+                                    offsetY: 5,
+                                }
+                                }
+                            }
+                            },
+                            fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shade: 'dark',
+                                type: 'horizontal',
+                                shadeIntensity: 0.5,
+                                gradientToColors: ['#ABE5A1'],
+                                inverseColors: true,
+                                opacityFrom: 1,
+                                opacityTo: 1,
+                                stops: [0, 100]
+                            }
+                            },
+                            stroke: {
+                            lineCap: 'round'
+                            },
+                            labels: ['Percent'],
+                            };
+                            all_options.push(options);
+                    
+                        }
+                    for (var i = 0; i < json_data.length; i++) {
+                        
+                        
+                        if(i == 0){
+                            
+                            chart.updateSeries([serieses[i]])
+                            attack1.innerHTML = json_data[i].anomaly_type;
+                            attack1_count.innerHTML = json_data[i].total_count;
+    
+                        }
+                        else if(i == 1){
+                            
+                            chart1.updateSeries([serieses[i]])
+                            attack2.innerHTML = json_data[i].anomaly_type;
+                            attack2_count.innerHTML = json_data[i].total_count;
+    
+                        }
+                        else if(i == 2){
+                            
+                            chart2.updateSeries([serieses[i]])
+                            attack3.innerHTML = json_data[i].anomaly_type;
+                            attack3_count.innerHTML = json_data[i].total_count;
+                        
+                        }
+                        else{
+                            
+                            chart3.updateSeries([serieses[i]])
+                            attack4.innerHTML = json_data[i].anomaly_type;
+                            attack4_count.innerHTML = json_data[i].total_count;
+                        }
+                    }
+                }
+            });
+        }
+    
+        setInterval(renderRadialData, 5000);
+
+	</script>
+
         </div>
     </div>
+
+    <script>
+
+        // add click event listener to tabs
+        var tabs = document.querySelectorAll('.tab');
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // remove active class from all tabs
+
+                tabs.forEach(function(t) {
+                    t.classList.remove('active-tab');
+                });
+                // add active class to clicked tab
+                this.classList.add('active-tab');
+                // hide all tab contents
+                var tabContents = document.querySelectorAll('.tab-content');
+                tabContents.forEach(function(content) {
+                    content.style.display = 'none';
+                });
+                // show the corresponding tab content
+                var tabId = this.getAttribute('data-tab');
+                var tabContent = document.querySelector('#' + tabId);
+                tabContent.style.display = 'block';
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const sidebar = document.querySelector('.nav_bar_container');
+            const toggleButton = document.querySelector('#toggle-sidebar');
+
+            toggleButton.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+
+            // Add click event listener to document
+            document.addEventListener('click', function(event) {
+                // Check if event target is not the sidebar or the toggle button
+                if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+                }
+            });
+        });
+
+        function updateTable() {
+            $.ajax({
+                url: '{% url 'pcap_anomaly_data' %}',
+                type: 'get',
+                success: function(response) {
+                    // Clear the existing table rows
+                    $('#my_table tbody').empty();
+                
+                    
+                     // Get the table body element
+                    const tableBody = document.querySelector('#my_table tbody');
+
+                    // Loop through the list of dictionaries and create a table row for each dictionary
+                    for (const data of response.anomaly) {
+                        // Create a new table row element
+                        const row = document.createElement('tr');
+                        // Loop through the keys of the dictionary and create a table cell for each value
+                        for (const key in data) {
+                        if(data["count"] <= 1 ){
+                            break;
+                        }
+                        else{
+
+                            const cell = document.createElement('td');
+                            cell.textContent = data[key];
+                            row.appendChild(cell);
+                            }
+                        
+                            // Add the table row to the table body
+                            tableBody.appendChild(row);
+                        }
+                    }
+                }
+                
+            });
+        }
+        setInterval(updateTable, 1000);
+        $(".send_pcap_btn").click(function(){
+            var file = $("input[id^='file']")[0].files[0];
+            var fileExt = $("input[id^='file']").val().split('.').pop();
+            
+            if(file != null){
+                if((fileExt === "pcap") || (fileExt === "pcapng")){
+                    var data = new FormData();
+                    data.append("my_file", file);
+                    data.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+                    
+                    $.ajax({
+                        url: '{% url 'upload_pcap' %}',
+                        type: 'POST',
+                        data: data,
+                        success: function (response) {
+                            console.log(response);
+                        },
+                        cache: false,
+                        processData: false,
+                        contentType: false,
+                    });
+                }
+                else{
+                    $("#error_msg").css("color", "red");
+                    $("#error_msg").html("Only csv files can be trainned.");
+                }
+            }
+            else{
+                $("#error_msg").css("color", "red");
+                $("#error_msg").html("Please Select File(.csv)");
+            }
+        });
+        
+    </script>
 </body>
 </html>
